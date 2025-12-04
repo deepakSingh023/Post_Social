@@ -32,7 +32,7 @@ public class PostController {
 
     // ---------------- DELETE POST ----------------
 
-    @DeleteMapping("/{postId}")
+    @DeleteMapping("/delete/{postId}")
     public ResponseEntity<String> deletePost(
             Authentication authentication,
             @PathVariable String postId

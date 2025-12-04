@@ -1,6 +1,7 @@
 package com.example.social_post.service;
 import com.example.social_post.dto.PostCreation;
 import com.example.social_post.entity.Post;
+import com.example.social_post.repository.PostRepository;
 import com.example.social_post.util.ImageCompressor;
 import com.example.social_post.util.VideoCompressor;
 import lombok.RequiredArgsConstructor;
@@ -9,11 +10,13 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.social_post.repository.PostRepository;
+
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,44 +28,46 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post createPost(String userId, PostCreation dto) throws Exception {
 
-        List<String> imageUrls = new ArrayList<>();
+        List<CompletableFuture<String>> futures = new ArrayList<>();
         String videoUrl = null;
 
-        // 🔥 1. IMAGE COMPRESSION (max 7)
+        // 🔥 1. IMAGE COMPRESSION + ASYNC UPLOAD
         if (dto.getImages() != null) {
             if (dto.getImages().size() > 7)
                 throw new IllegalArgumentException("Max 7 images allowed");
 
             for (MultipartFile img : dto.getImages()) {
                 byte[] compressedImg = ImageCompressor.compress(img.getBytes());
-
-                String url = s3Service.uploadBytes(
-                        compressedImg,
-                        img.getOriginalFilename(),
-                        img.getContentType()
-                );
-
-                imageUrls.add(url);
+                futures.add(s3Service.uploadBytesAsync(compressedImg, img.getOriginalFilename(), img.getContentType()));
             }
         }
 
         // 🔥 2. VIDEO COMPRESSION + DURATION CHECK
         if (dto.getVideo() != null && !dto.getVideo().isEmpty()) {
-
-            // extract duration using Apache Tika
             long durationSec = extractVideoDuration(dto.getVideo());
             if (durationSec > 40)
                 throw new IllegalArgumentException("Video must be <= 40 seconds");
 
-            // compress video using FFmpeg
             byte[] compressedVideo = VideoCompressor.compress(dto.getVideo());
-
-            videoUrl = s3Service.uploadBytes(
+            CompletableFuture<String> videoFuture = s3Service.uploadBytesAsync(
                     compressedVideo,
                     dto.getVideo().getOriginalFilename(),
                     dto.getVideo().getContentType()
             );
+            futures.add(videoFuture);
+            videoUrl = videoFuture.get(); // Wait only for video URL
         }
+
+        // Wait for all image uploads and get URLs
+        List<String> imageUrls = futures.stream()
+                .map(f -> {
+                    try {
+                        return f.get(); // Wait for each future
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
 
         // 🔥 3. SAVE POST IN DB
         Post post = Post.builder()
@@ -87,26 +92,33 @@ public class PostServiceImpl implements PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        // 🔥 Owner check: Only the creator can delete
         if (!post.getUserId().equals(userId)) {
             throw new RuntimeException("You are not allowed to delete this post");
         }
 
-        // 🔥 Delete media from R2
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         if (post.getImageUrls() != null) {
             for (String url : post.getImageUrls()) {
-                s3Service.deleteFile(url);
+                futures.add(s3Service.deleteFileAsync(url));
             }
         }
 
         if (post.getVideoUrl() != null) {
-            s3Service.deleteFile(post.getVideoUrl());
+            futures.add(s3Service.deleteFileAsync(post.getVideoUrl()));
         }
 
-        // 🔥 Delete post from DB
+        // Wait for all deletions
+        futures.forEach(f -> {
+            try {
+                f.get();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
         postRepository.deleteById(postId);
     }
-
 
     private long extractVideoDuration(MultipartFile video) throws Exception {
         try (InputStream is = video.getInputStream()) {
@@ -116,8 +128,8 @@ public class PostServiceImpl implements PostService {
 
             String dur = metadata.get("xmpDM:duration");
             if (dur == null) return 0;
-
             return Math.round(Double.parseDouble(dur) / 1000);
         }
     }
 }
+

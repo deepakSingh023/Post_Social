@@ -1,18 +1,15 @@
 package com.example.social_post.service;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +23,27 @@ public class S3Service {
     @Value("${cloudflare.r2.account-id}")
     private String accountId;
 
+    // --------------------
+    // Async upload method
+    // --------------------
+    @Async
+    public CompletableFuture<String> uploadBytesAsync(byte[] bytes, String originalName, String contentType) {
+        String url = uploadBytes(bytes, originalName, contentType); // Calls existing blocking method
+        return CompletableFuture.completedFuture(url);
+    }
+
+    // --------------------
+    // Async delete method
+    // --------------------
+    @Async
+    public CompletableFuture<Void> deleteFileAsync(String fileUrl) {
+        deleteFile(fileUrl); // Calls existing blocking method
+        return CompletableFuture.completedFuture(null);
+    }
+
+    // --------------------
+    // Existing blocking methods
+    // --------------------
     public String uploadBytes(byte[] bytes, String originalName, String contentType) {
         String key = UUID.randomUUID() + "-" + originalName;
 
@@ -42,23 +60,15 @@ public class S3Service {
 
     public void deleteFile(String fileUrl) {
         try {
-            // Extract key from url
             String key = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
-
             DeleteObjectRequest req = DeleteObjectRequest.builder()
                     .bucket(bucket)
                     .key(key)
                     .build();
-
             s3Client.deleteObject(req);
-
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete R2 file: " + e.getMessage());
         }
     }
 }
-
-
-
-
 
