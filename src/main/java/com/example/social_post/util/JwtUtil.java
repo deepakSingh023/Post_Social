@@ -44,9 +44,7 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Optional helper: check if token is still valid
-     */
+  
     public boolean isTokenValid(String token) {
         try {
             extractUserId(token); // will throw if invalid/expired

@@ -9,9 +9,15 @@ public class PostCreation {
 
     private String caption;
 
-    private List<MultipartFile> images; // Max 5
+    private List<MultipartFile> images; // up to 7
 
-    private MultipartFile video; // Max 40MB
+    private MultipartFile video; // up to 40 seconds
 
-    private List<String> postTags; // Optional list of tags provided by the user
+    private String songUrl;
+    private String songName;
+    private String artistName;
+
+    private List<String> tags;
+
+    private boolean isPrivate; // public/private post
 }

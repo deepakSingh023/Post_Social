@@ -16,21 +16,33 @@ public class PostController {
 
     private final PostService postService;
 
-    @PostMapping(consumes = {"multipart/form-data"})
+    // ---------------- CREATE POST ----------------
+
+    @PostMapping(value = "/create", consumes = {"multipart/form-data"})
     public ResponseEntity<Post> createPost(
             Authentication authentication,
-            @ModelAttribute PostCreation postCreation // use @ModelAttribute for multipart + DTO
+            @ModelAttribute PostCreation postCreation
     ) throws Exception {
 
-        String userId = authentication.getName(); // from JWT
-        Post post = postService.createPost(
-                userId,
-                postCreation.getCaption(),
-                postCreation.getImages(),
-                postCreation.getVideo(),
-                postCreation.getPostTags()
-        );
+        String userId = authentication.getName();
+        Post post = postService.createPost(userId, postCreation);
 
         return ResponseEntity.ok(post);
     }
+
+    // ---------------- DELETE POST ----------------
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<String> deletePost(
+            Authentication authentication,
+            @PathVariable String postId
+    ) {
+
+        String userId = authentication.getName(); // owner check
+        postService.deletePost(userId, postId);
+
+        return ResponseEntity.ok("Post deleted successfully");
+    }
 }
+
+

@@ -1,5 +1,8 @@
 package com.example.social_post.service;
+import com.example.social_post.dto.PostCreation;
 import com.example.social_post.entity.Post;
+import com.example.social_post.util.ImageCompressor;
+import com.example.social_post.util.VideoCompressor;
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -16,69 +19,105 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
 
+    private final S3Service s3Service;
     private final PostRepository postRepository;
-    private final S3Service s3Service; // helper to talk to Cloudflare R2
 
     @Override
-    public Post createPost(String userId, String caption,
-                           List<MultipartFile> images,
-                           MultipartFile video,List<String>postTags) throws Exception {
-
-        if (images != null && images.size() > 5) {
-            throw new IllegalArgumentException("Max 5 images allowed");
-        }
+    public Post createPost(String userId, PostCreation dto) throws Exception {
 
         List<String> imageUrls = new ArrayList<>();
-        if (images != null) {
-            for (MultipartFile img : images) {
-                if (img.getSize() > 5 * 1024 * 1024) { // 5MB limit example
-                    throw new IllegalArgumentException("Image size must be <= 5MB");
-                }
-                String url = s3Service.uploadFile(img);
+        String videoUrl = null;
+
+        // 🔥 1. IMAGE COMPRESSION (max 7)
+        if (dto.getImages() != null) {
+            if (dto.getImages().size() > 7)
+                throw new IllegalArgumentException("Max 7 images allowed");
+
+            for (MultipartFile img : dto.getImages()) {
+                byte[] compressedImg = ImageCompressor.compress(img.getBytes());
+
+                String url = s3Service.uploadBytes(
+                        compressedImg,
+                        img.getOriginalFilename(),
+                        img.getContentType()
+                );
+
                 imageUrls.add(url);
             }
         }
 
-        List<String> tags = new ArrayList<>();
-        if (postTags != null && !postTags.isEmpty()) {
-            tags.addAll(postTags);
+        // 🔥 2. VIDEO COMPRESSION + DURATION CHECK
+        if (dto.getVideo() != null && !dto.getVideo().isEmpty()) {
+
+            // extract duration using Apache Tika
+            long durationSec = extractVideoDuration(dto.getVideo());
+            if (durationSec > 40)
+                throw new IllegalArgumentException("Video must be <= 40 seconds");
+
+            // compress video using FFmpeg
+            byte[] compressedVideo = VideoCompressor.compress(dto.getVideo());
+
+            videoUrl = s3Service.uploadBytes(
+                    compressedVideo,
+                    dto.getVideo().getOriginalFilename(),
+                    dto.getVideo().getContentType()
+            );
         }
 
-
-        String videoUrl = null;
-        long duration = 0;
-        if (video != null && !video.isEmpty()) {
-            if (video.getSize() > 40 * 1024 * 1024) {
-                throw new IllegalArgumentException("Video must be <= 40MB");
-            }
-
-            // detect duration using Tika
-            try (InputStream is = video.getInputStream()) {
-                Metadata metadata = new Metadata();
-                AutoDetectParser parser = new AutoDetectParser();
-                parser.parse(is, new BodyContentHandler(), metadata);
-
-                String dur = metadata.get("xmpDM:duration");
-                if (dur != null) {
-                    duration = Math.round(Double.parseDouble(dur) / 1000);
-                    if (duration > 30) {
-                        throw new IllegalArgumentException("Video must be <= 30s");
-                    }
-                }
-            }
-
-            videoUrl = s3Service.uploadFile(video);
-        }
-
+        // 🔥 3. SAVE POST IN DB
         Post post = Post.builder()
                 .userId(userId)
-                .caption(caption)
+                .caption(dto.getCaption())
                 .imageUrls(imageUrls)
                 .videoUrl(videoUrl)
-                .tags(postTags)
+                .songUrl(dto.getSongUrl())
+                .songName(dto.getSongName())
+                .artistName(dto.getArtistName())
+                .tags(dto.getTags())
+                .isPrivate(dto.isPrivate())
                 .createdAt(Instant.now())
                 .build();
 
         return postRepository.save(post);
+    }
+
+    @Override
+    public void deletePost(String userId, String postId) {
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        // 🔥 Owner check: Only the creator can delete
+        if (!post.getUserId().equals(userId)) {
+            throw new RuntimeException("You are not allowed to delete this post");
+        }
+
+        // 🔥 Delete media from R2
+        if (post.getImageUrls() != null) {
+            for (String url : post.getImageUrls()) {
+                s3Service.deleteFile(url);
+            }
+        }
+
+        if (post.getVideoUrl() != null) {
+            s3Service.deleteFile(post.getVideoUrl());
+        }
+
+        // 🔥 Delete post from DB
+        postRepository.deleteById(postId);
+    }
+
+
+    private long extractVideoDuration(MultipartFile video) throws Exception {
+        try (InputStream is = video.getInputStream()) {
+            Metadata metadata = new Metadata();
+            AutoDetectParser parser = new AutoDetectParser();
+            parser.parse(is, new BodyContentHandler(), metadata);
+
+            String dur = metadata.get("xmpDM:duration");
+            if (dur == null) return 0;
+
+            return Math.round(Double.parseDouble(dur) / 1000);
+        }
     }
 }

@@ -12,7 +12,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Document(collection="posts")
-
 public class Post {
 
     @Id
@@ -21,17 +20,21 @@ public class Post {
     private String userId;
 
     private List<String> imageUrls;
-
     private String videoUrl;
 
     private String caption;
 
-    private Instant createdAt;
-
-    private int likes = 0;
-
-    private int comments = 0;
+    private String songUrl;
+    private String songName;
+    private String artistName;
 
     private List<String> tags;
 
+    private boolean isPrivate;
+
+    private Instant createdAt;
+
+    private int likes = 0;
+    private int comments = 0;
 }
+
