@@ -9,6 +9,8 @@ public interface PostService {
 
     void deletePost(String userId, String postId);
 
+    List<Post> getPostsByUserId(String userId);
+
 }
 
 

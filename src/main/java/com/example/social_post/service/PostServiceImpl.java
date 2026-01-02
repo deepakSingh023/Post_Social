@@ -120,6 +120,12 @@ public class PostServiceImpl implements PostService {
         postRepository.deleteById(postId);
     }
 
+    @Override
+    public List<Post> getPostsByUserId(String userId) {
+        return postRepository.findByUserId(userId);
+    }
+
+
     private long extractVideoDuration(MultipartFile video) throws Exception {
         try (InputStream is = video.getInputStream()) {
             Metadata metadata = new Metadata();

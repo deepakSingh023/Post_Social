@@ -9,6 +9,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
@@ -42,6 +44,15 @@ public class PostController {
         postService.deletePost(userId, postId);
 
         return ResponseEntity.ok("Post deleted successfully");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<Post>> getMyPosts(Authentication authentication) {
+
+        String userId = authentication.getName();
+        List<Post> posts = postService.getPostsByUserId(userId);
+
+        return ResponseEntity.ok(posts);
     }
 }
 
