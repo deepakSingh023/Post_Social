@@ -75,6 +75,8 @@ public class PostServiceImpl implements PostService {
                 .caption(dto.getCaption())
                 .imageUrls(imageUrls)
                 .videoUrl(videoUrl)
+                .username(dto.getUsername())
+                .avatar(dto.getAvatar())
                 .songUrl(dto.getSongUrl())
                 .songName(dto.getSongName())
                 .artistName(dto.getArtistName())

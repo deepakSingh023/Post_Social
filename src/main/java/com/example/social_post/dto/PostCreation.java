@@ -13,6 +13,10 @@ public class PostCreation {
 
     private MultipartFile video; // up to 40 seconds
 
+    private String avatar;
+
+    private String username;
+
     private String songUrl;
     private String songName;
     private String artistName;

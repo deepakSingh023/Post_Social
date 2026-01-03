@@ -19,6 +19,12 @@ public class Post {
 
     private String userId;
 
+    private String avatar;
+
+    private String username;
+
+
+
     private List<String> imageUrls;
     private String videoUrl;
 
