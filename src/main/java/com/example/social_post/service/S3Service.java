@@ -23,26 +23,21 @@ public class S3Service {
     @Value("${cloudflare.r2.account-id}")
     private String accountId;
 
+    // ✅ Dev/public URL for frontend
+    @Value("${cloudflare.r2.posts-public-url}")
+    private String publicBaseUrl;
+
     // --------------------
     // Async upload method
     // --------------------
     @Async
     public CompletableFuture<String> uploadBytesAsync(byte[] bytes, String originalName, String contentType) {
-        String url = uploadBytes(bytes, originalName, contentType); // Calls existing blocking method
+        String url = uploadBytes(bytes, originalName, contentType);
         return CompletableFuture.completedFuture(url);
     }
 
     // --------------------
-    // Async delete method
-    // --------------------
-    @Async
-    public CompletableFuture<Void> deleteFileAsync(String fileUrl) {
-        deleteFile(fileUrl); // Calls existing blocking method
-        return CompletableFuture.completedFuture(null);
-    }
-
-    // --------------------
-    // Existing blocking methods
+    // Existing blocking upload
     // --------------------
     public String uploadBytes(byte[] bytes, String originalName, String contentType) {
         String key = UUID.randomUUID() + "-" + originalName;
@@ -55,9 +50,13 @@ public class S3Service {
 
         s3Client.putObject(req, RequestBody.fromBytes(bytes));
 
-        return "https://" + accountId + ".r2.cloudflarestorage.com/" + bucket + "/" + key;
+        // ✅ Return dev/public URL instead of default r2.cloudflarestorage.com
+        return publicBaseUrl + "/" + key;
     }
 
+    // --------------------
+    // Delete file (no change needed)
+    // --------------------
     public void deleteFile(String fileUrl) {
         try {
             String key = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
@@ -71,4 +70,3 @@ public class S3Service {
         }
     }
 }
-
