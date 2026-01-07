@@ -28,48 +28,71 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post createPost(String userId, PostCreation dto) throws Exception {
 
-        List<CompletableFuture<String>> futures = new ArrayList<>();
+        List<CompletableFuture<String>> imageFutures = new ArrayList<>();
         String videoUrl = null;
 
-        // 🔥 1. IMAGE COMPRESSION + ASYNC UPLOAD
-        if (dto.getImages() != null) {
-            if (dto.getImages().size() > 7)
+        // ================= IMAGES =================
+        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
+
+            if (dto.getImages().size() > 7) {
                 throw new IllegalArgumentException("Max 7 images allowed");
+            }
 
             for (MultipartFile img : dto.getImages()) {
+
+                if (img.isEmpty()) continue;
+
+                String contentType = img.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    throw new IllegalArgumentException("Invalid image file");
+                }
+
                 byte[] compressedImg = ImageCompressor.compress(img.getBytes());
-                futures.add(s3Service.uploadBytesAsync(compressedImg, img.getOriginalFilename(), img.getContentType()));
+
+                imageFutures.add(
+                        s3Service.uploadBytesAsync(
+                                compressedImg,
+                                img.getOriginalFilename(),
+                                contentType
+                        )
+                );
             }
         }
 
-        // 🔥 2. VIDEO COMPRESSION + DURATION CHECK
+        // ================= VIDEO =================
         if (dto.getVideo() != null && !dto.getVideo().isEmpty()) {
+
+            String contentType = dto.getVideo().getContentType();
+            if (contentType == null || !contentType.startsWith("video/")) {
+                throw new IllegalArgumentException("Invalid video file");
+            }
+
             long durationSec = extractVideoDuration(dto.getVideo());
-            if (durationSec > 40)
+            if (durationSec > 40) {
                 throw new IllegalArgumentException("Video must be <= 40 seconds");
+            }
 
             byte[] compressedVideo = VideoCompressor.compress(dto.getVideo());
-            CompletableFuture<String> videoFuture = s3Service.uploadBytesAsync(
+
+            videoUrl = s3Service.uploadBytesAsync(
                     compressedVideo,
                     dto.getVideo().getOriginalFilename(),
-                    dto.getVideo().getContentType()
-            );
-            futures.add(videoFuture);
-            videoUrl = videoFuture.get(); // Wait only for video URL
+                    "video/mp4"
+            ).get(); // wait ONLY for video
         }
 
-        // Wait for all image uploads and get URLs
-        List<String> imageUrls = futures.stream()
+        // ================= WAIT FOR IMAGES =================
+        List<String> imageUrls = imageFutures.stream()
                 .map(f -> {
                     try {
-                        return f.get(); // Wait for each future
+                        return f.get();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw new RuntimeException("Image upload failed", e);
                     }
                 })
-                .collect(Collectors.toList());
+                .toList();
 
-        // 🔥 3. SAVE POST IN DB
+        // ================= SAVE POST =================
         Post post = Post.builder()
                 .userId(userId)
                 .caption(dto.getCaption())
@@ -87,6 +110,7 @@ public class PostServiceImpl implements PostService {
 
         return postRepository.save(post);
     }
+
 
     @Override
     public void deletePost(String userId, String postId) {
