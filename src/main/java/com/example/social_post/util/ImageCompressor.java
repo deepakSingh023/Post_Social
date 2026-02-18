@@ -10,17 +10,15 @@ import java.io.IOException;
 
 public class ImageCompressor {
 
-    public static byte[] compress(byte[] input) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+   public static byte[] compress(byte[] input) throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        BufferedImage original = ImageIO.read(new ByteArrayInputStream(input));
+    Thumbnails.of(new ByteArrayInputStream(input))
+            .scale(1.0)
+            .outputFormat("jpg")   // important
+            .outputQuality(0.7)
+            .toOutputStream(baos);
 
-        // quality 0.7 but still sharp, non-blurry
-        Thumbnails.of(original)
-                .scale(1.0)
-                .outputQuality(0.7)
-                .toOutputStream(baos);
-
-        return baos.toByteArray();
-    }
+    return baos.toByteArray();
+}
 }
