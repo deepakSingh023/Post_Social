@@ -31,7 +31,6 @@ public class PostServiceImpl implements PostService {
         List<CompletableFuture<String>> imageFutures = new ArrayList<>();
         String videoUrl = null;
 
-        // ================= IMAGES =================
         if (dto.getImages() != null && !dto.getImages().isEmpty()) {
 
             if (dto.getImages().size() > 7) {

@@ -51,7 +51,6 @@ public class S3Service {
         s3Client.deleteObject(req);
     }
 
-    // ✅ THIS FIXES YOUR ERROR
     @Async
     public CompletableFuture<Void> deleteFileAsync(String fileUrl) {
         deleteFile(fileUrl);
