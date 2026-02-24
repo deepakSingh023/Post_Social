@@ -48,8 +48,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/health").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(internalFilter, JwtAuthenticationFilter.class)
-                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(internalFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
