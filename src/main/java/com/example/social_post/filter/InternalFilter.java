@@ -6,19 +6,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-
-@Component
 @RequiredArgsConstructor
 public class InternalFilter extends OncePerRequestFilter {
 
-    @Value("${service.secret}")
-    private String localSecret;
-
+    private final String localSecret;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {

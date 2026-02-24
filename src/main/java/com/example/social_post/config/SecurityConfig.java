@@ -2,6 +2,8 @@ package com.example.social_post.config;
 
 import com.example.social_post.filter.InternalFilter;
 import com.example.social_post.filter.JwtAuthenticationFilter;
+import com.example.social_post.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,6 +20,20 @@ import java.util.List;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil) {
+        return new JwtAuthenticationFilter(jwtUtil);
+    }
+
+    @Bean
+    public InternalFilter internalFilter(
+            @Value("${service.secret}") String secret) {
+        return new InternalFilter(secret);
+    }
+
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
