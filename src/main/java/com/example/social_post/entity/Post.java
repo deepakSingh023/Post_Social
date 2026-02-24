@@ -40,7 +40,7 @@ public class Post {
 
     private Instant createdAt;
 
-    private int likes = 0;
-    private int comments = 0;
+    private long likes = 0;
+    private long comments = 0;
 }
 

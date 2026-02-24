@@ -21,10 +21,12 @@ public class InternalFilter extends OncePerRequestFilter {
 
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request){
+    protected boolean shouldNotFilter(HttpServletRequest request) {
 
-        return !request.getRequestURI().startsWith("/api/denormalization/**");
+        String uri = request.getRequestURI();
 
+        return !(uri.startsWith("/api/denormalize/")
+                || uri.startsWith("/api/post/"));
     }
 
     @Override
