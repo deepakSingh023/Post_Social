@@ -1,13 +1,18 @@
 package com.example.social_post.service;
+import com.example.social_post.dto.CreateFeed;
 import com.example.social_post.dto.PostCreation;
+import com.example.social_post.dto.RecipientsPosts;
 import com.example.social_post.entity.Post;
 import com.example.social_post.repository.PostRepository;
 import com.example.social_post.util.ImageCompressor;
+import com.example.social_post.util.PostClient;
 import com.example.social_post.util.VideoCompressor;
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,6 +29,11 @@ public class PostServiceImpl implements PostService {
 
     private final S3Service s3Service;
     private final PostRepository postRepository;
+
+    private final PostClient postClient;
+
+    @Value("${service.secret}")
+    private String token;
 
     @Override
     public Post createPost(String userId, PostCreation dto) throws Exception {
@@ -107,6 +117,13 @@ public class PostServiceImpl implements PostService {
                 .createdAt(Instant.now())
                 .build();
 
+        CreateFeed data = new CreateFeed(
+                userId,
+                post.getId()
+        );
+
+        postClient.createFeed(token,data);
+
         return postRepository.save(post);
     }
 
@@ -148,6 +165,51 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<Post> getPostsByUserId(String userId) {
         return postRepository.findByUserId(userId);
+    }
+
+
+    @Override
+    public List<Post> getPosts(List<String> postIds){
+
+        return postRepository.findAllById(postIds);
+    }
+
+
+    @Override
+    public RecipientsPosts getFeedPosts(String authorId, String cursor, int size) {
+
+        List<Post> posts;
+
+        if (cursor == null) {
+            posts = postRepository.findByAuthorIdOrderByCreatedAtDescIdDesc(
+                    authorId,
+                    PageRequest.of(0, size)
+            );
+        } else {
+            String[] parts = cursor.split("\\|");
+            Instant cursorCreatedAt = Instant.parse(parts[0]);
+            String cursorId = parts[1];
+
+            posts = postRepository.findNextPostsByAuthorId(
+                    authorId,
+                    cursorCreatedAt,
+                    cursorId,
+                    PageRequest.of(0, size)
+            );
+        }
+
+        List<String> postIds = posts.stream()
+                .map(Post::getId)
+                .toList();
+
+        String nextCursor = null;
+
+        if (!posts.isEmpty()) {
+            Post last = posts.get(posts.size() - 1);
+            nextCursor = last.getCreatedAt() + "|" + last.getId();
+        }
+
+        return new RecipientsPosts(postIds, nextCursor);
     }
 
 
