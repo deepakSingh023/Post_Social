@@ -1,5 +1,6 @@
 package com.example.social_post.controller;
 
+import com.example.social_post.dto.PersonalPosts;
 import com.example.social_post.dto.PostCreation;
 import com.example.social_post.entity.Post;
 import com.example.social_post.service.PostService;
@@ -46,14 +47,18 @@ public class PostController {
         return ResponseEntity.ok("Post deleted successfully");
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<List<Post>> getMyPosts(Authentication authentication) {
+    //this is to get the posts of the user of by another user too see the post of another user
+    @GetMapping("/users/{userId}/posts")
+    public ResponseEntity<PersonalPosts> getUserPosts(
+            @PathVariable String userId,
+            @RequestParam(required = false) String cursor,
+            Authentication authentication) {
 
-        String userId = authentication.getName();
-        List<Post> posts = postService.getPostsByUserId(userId);
+        String viewerUserId = authentication != null ? authentication.getName() : null;
 
-        return ResponseEntity.ok(posts);
+        PersonalPosts response = postService.getPostsByUserId(userId, viewerUserId, cursor);
+
+        return ResponseEntity.ok(response);
     }
+
 }
-
-

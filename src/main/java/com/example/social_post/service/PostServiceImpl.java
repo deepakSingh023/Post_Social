@@ -1,10 +1,9 @@
 package com.example.social_post.service;
-import com.example.social_post.dto.CreateFeed;
-import com.example.social_post.dto.PostCreation;
-import com.example.social_post.dto.RecipientsPosts;
+import com.example.social_post.dto.*;
 import com.example.social_post.entity.Post;
 import com.example.social_post.repository.PostRepository;
 import com.example.social_post.util.ImageCompressor;
+import com.example.social_post.util.LikeClient;
 import com.example.social_post.util.PostClient;
 import com.example.social_post.util.VideoCompressor;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +12,16 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -29,8 +31,11 @@ public class PostServiceImpl implements PostService {
 
     private final S3Service s3Service;
     private final PostRepository postRepository;
+    private final FeedAsyncService feedAsyncService;
 
     private final PostClient postClient;
+
+     private final LikeClient likeClient;
 
     @Value("${service.secret}")
     private String token;
@@ -122,7 +127,7 @@ public class PostServiceImpl implements PostService {
                 post.getId()
         );
 
-        postClient.createFeed(token,data);
+        feedAsyncService.createFeed(data,token);
 
         return postRepository.save(post);
     }
@@ -163,10 +168,71 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<Post> getPostsByUserId(String userId) {
-        return postRepository.findByUserId(userId);
-    }
+    public PersonalPosts getPostsByUserId(String profileUserId, String viewerUserId, String cursor) {
 
+        List<Post> posts;
+
+        if (cursor == null || cursor.isBlank()) {
+            posts = postRepository.findByUserIdOrderByCreatedAtDesc(
+                    profileUserId,
+                    Pageable.ofSize(10)
+            );
+        } else {
+            Instant instCursor = Instant.parse(cursor);
+
+            posts = postRepository.findByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+                    profileUserId,
+                    instCursor,
+                    Pageable.ofSize(10)
+            );
+        }
+
+        //  next cursor
+        Instant nextCursor = posts.isEmpty()
+                ? null
+                : posts.get(posts.size() - 1).getCreatedAt();
+
+        //  isOwner (same for all posts)
+        boolean isOwner = viewerUserId != null && viewerUserId.equals(profileUserId);
+
+        // collect postIds
+        List<String> postIds = posts.stream()
+                .map(Post::getId)
+                .toList();
+
+        //  call like service (bulk)
+        Map<String, Boolean> likedMap;
+
+        if (viewerUserId != null && !postIds.isEmpty()) {
+            likedMap = likeClient.getLikedStatus(viewerUserId, postIds);
+        } else {
+            likedMap = Collections.emptyMap();
+        }
+
+        //  map to DTO
+        List<PostResponseDto> postDtos = posts.stream()
+                .map(post -> new PostResponseDto(
+                        post.getId(),
+                        post.getUserId(),
+                        post.getAvatar(),
+                        post.getUsername(),
+                        post.getImageUrls(),
+                        post.getVideoUrl(),
+                        post.getCaption(),
+                        post.getSongUrl(),
+                        post.getSongName(),
+                        post.getArtistName(),
+                        post.getTags(),
+                        post.isPrivate(),
+                        post.getCreatedAt(),
+                        post.getLikes(),
+                        post.getComments(),
+                        likedMap.getOrDefault(post.getId(), false)
+                ))
+                .toList();
+
+        return new PersonalPosts(postDtos, nextCursor, isOwner);
+    }
 
     @Override
     public List<Post> getPosts(List<String> postIds){
@@ -181,7 +247,7 @@ public class PostServiceImpl implements PostService {
         List<Post> posts;
 
         if (cursor == null) {
-            posts = postRepository.findByAuthorIdOrderByCreatedAtDescIdDesc(
+            posts = postRepository.findByUserIdOrderByCreatedAtDescIdDesc(
                     authorId,
                     PageRequest.of(0, size)
             );

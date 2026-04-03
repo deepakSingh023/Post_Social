@@ -1,4 +1,5 @@
 package com.example.social_post.service;
+import com.example.social_post.dto.PersonalPosts;
 import com.example.social_post.dto.PostCreation;
 import com.example.social_post.dto.RecipientsPosts;
 import com.example.social_post.entity.Post;
@@ -10,12 +11,11 @@ public interface PostService {
 
     void deletePost(String userId, String postId);
 
-    List<Post> getPostsByUserId(String userId);
+    PersonalPosts getPostsByUserId(String profileUserId, String viewerUserId, String cursor);
 
     List<Post> getPosts(List<String> postIds);
 
     RecipientsPosts getFeedPosts(String authorId, String cursor, int size);
 
 }
-
 

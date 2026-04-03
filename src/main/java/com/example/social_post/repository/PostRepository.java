@@ -17,14 +17,29 @@ public interface PostRepository extends MongoRepository<Post, String> {
 
     List<Post> findAllById(Iterable<String> ids);
 
-    List<Post> findByAuthorIdOrderByCreatedAtDescIdDesc(
+    List<Post> findByUserIdOrderByCreatedAtDescIdDesc(
             String authorId,
             Pageable pageable
     );
 
+    List<Post> findByUserIdOrderByCreatedAtDesc(
+            String userId,
+            Pageable pageable
+    );
+
+
+    List<Post> findByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+            String userId,
+            Instant cursorCreatedAt,
+            Pageable pageable
+    );
+
+
+
+
     @Query(value = """
     {
-      "authorId": ?0,
+      "userId": ?0,
       "$or": [
         { "createdAt": { "$lt": ?1 } },
         { "createdAt": ?1, "_id": { "$lt": ?2 } }

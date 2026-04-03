@@ -27,4 +27,22 @@ public class AsyncConfig {
         thread.initialize();
         return thread;
     }
+
+
+    @Bean("feedCreate")
+    public Executor createTheFeed(){
+
+        ThreadPoolTaskExecutor thread = new ThreadPoolTaskExecutor();
+
+        thread.setCorePoolSize(10);
+        thread.setMaxPoolSize(20);
+        thread.setQueueCapacity(100);
+        thread.setThreadNamePrefix("-createFeed");
+        thread.setRejectedExecutionHandler(
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        thread.initialize();
+        return thread;
+
+    }
 }
