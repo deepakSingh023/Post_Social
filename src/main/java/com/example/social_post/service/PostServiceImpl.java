@@ -1,6 +1,7 @@
 package com.example.social_post.service;
 import com.example.social_post.dto.*;
 import com.example.social_post.entity.Post;
+import com.example.social_post.exceptions.PostNotFound;
 import com.example.social_post.repository.PostRepository;
 import com.example.social_post.util.ImageCompressor;
 import com.example.social_post.util.LikeClient;
@@ -204,7 +205,7 @@ public class PostServiceImpl implements PostService {
         Map<String, Boolean> likedMap;
 
         if (viewerUserId != null && !postIds.isEmpty()) {
-            likedMap = likeClient.getLikedStatus(viewerUserId, postIds);
+            likedMap = likeClient.getLikedStatus(token,viewerUserId, postIds);
         } else {
             likedMap = Collections.emptyMap();
         }
@@ -276,6 +277,41 @@ public class PostServiceImpl implements PostService {
         }
 
         return new RecipientsPosts(postIds, nextCursor);
+    }
+
+    @Override
+    public IndividualResponse getIndividualPost(String postId,String userId){
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(()-> new PostNotFound("this post does not exist"));
+
+
+        boolean isOwner = post.getUserId().equals(userId);
+
+        boolean isLiked = likeClient.getIndividualLiked(token, userId, postId);
+
+        PostResponseDto res = new PostResponseDto(
+                post.getId(),
+                post.getUserId(),
+                post.getAvatar(),
+                post.getUsername(),
+                post.getImageUrls(),
+                post.getVideoUrl(),
+                post.getCaption(),
+                post.getSongUrl(),
+                post.getSongName(),
+                post.getArtistName(),
+                post.getTags(),
+                post.isPrivate(),
+                post.getCreatedAt(),
+                post.getLikes(),
+                post.getComments(),
+                isLiked
+        );
+
+
+        return new IndividualResponse(res,isOwner);
+
     }
 
 

@@ -1,7 +1,9 @@
 package com.example.social_post.controller;
 
+import com.example.social_post.dto.IndividualResponse;
 import com.example.social_post.dto.PersonalPosts;
 import com.example.social_post.dto.PostCreation;
+import com.example.social_post.dto.PostLiked;
 import com.example.social_post.entity.Post;
 import com.example.social_post.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +61,16 @@ public class PostController {
         PersonalPosts response = postService.getPostsByUserId(userId, viewerUserId, cursor);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/users/posts/{postId}")
+    public ResponseEntity<IndividualResponse> getIndividualPost(
+            @PathVariable String postId,
+            Authentication authentication
+    ) {
+        String userId = authentication.getName();
+        IndividualResponse res = postService.getIndividualPost(postId, userId);
+        return ResponseEntity.ok(res);
     }
 
 }

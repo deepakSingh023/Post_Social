@@ -1,7 +1,5 @@
 package com.example.social_post.service;
-import com.example.social_post.dto.PersonalPosts;
-import com.example.social_post.dto.PostCreation;
-import com.example.social_post.dto.RecipientsPosts;
+import com.example.social_post.dto.*;
 import com.example.social_post.entity.Post;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
@@ -16,6 +14,8 @@ public interface PostService {
     List<Post> getPosts(List<String> postIds);
 
     RecipientsPosts getFeedPosts(String authorId, String cursor, int size);
+
+    IndividualResponse getIndividualPost(String postId, String userId);
 
 }
 
