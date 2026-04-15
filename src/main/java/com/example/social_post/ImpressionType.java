@@ -1,8 +1,8 @@
 package com.example.social_post;
 
 public enum ImpressionType {
-    POST_LIKE("likes"),
-    POST_COMMENT("comments");
+    LIKE("likes"),
+    COMMENT("comments");
 
     private final String field;
 
