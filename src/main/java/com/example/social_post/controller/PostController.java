@@ -49,7 +49,7 @@ public class PostController {
         return ResponseEntity.ok("Post deleted successfully");
     }
 
-    //this is to get the posts of the user of by another user too see the post of another user
+    //this is to get the posts of the user of by another user to see the post of another user
     @GetMapping("/users/{userId}/posts")
     public ResponseEntity<PersonalPosts> getUserPosts(
             @PathVariable String userId,

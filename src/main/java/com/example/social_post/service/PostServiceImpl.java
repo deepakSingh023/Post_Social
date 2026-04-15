@@ -3,10 +3,7 @@ import com.example.social_post.dto.*;
 import com.example.social_post.entity.Post;
 import com.example.social_post.exceptions.PostNotFound;
 import com.example.social_post.repository.PostRepository;
-import com.example.social_post.util.ImageCompressor;
-import com.example.social_post.util.LikeClient;
-import com.example.social_post.util.PostClient;
-import com.example.social_post.util.VideoCompressor;
+import com.example.social_post.util.*;
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -33,6 +30,8 @@ public class PostServiceImpl implements PostService {
     private final S3Service s3Service;
     private final PostRepository postRepository;
     private final FeedAsyncService feedAsyncService;
+
+    private final ProfileClient profileClient;
 
     private final PostClient postClient;
 
@@ -107,14 +106,18 @@ public class PostServiceImpl implements PostService {
                 })
                 .toList();
 
+
+
+        InternalProfile profile = profileClient.getInternalData(userId);
+
         // ================= SAVE POST =================
         Post post = Post.builder()
                 .userId(userId)
                 .caption(dto.getCaption())
                 .imageUrls(imageUrls)
                 .videoUrl(videoUrl)
-                .username(dto.getUsername())
-                .avatar(dto.getAvatar())
+                .username(profile.username())
+                .avatar(profile.avatar())
                 .songUrl(dto.getSongUrl())
                 .songName(dto.getSongName())
                 .artistName(dto.getArtistName())
