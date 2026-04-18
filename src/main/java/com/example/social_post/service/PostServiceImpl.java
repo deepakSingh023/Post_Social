@@ -108,7 +108,7 @@ public class PostServiceImpl implements PostService {
 
 
 
-        InternalProfile profile = profileClient.getInternalData(userId);
+        InternalProfile profile = profileClient.getInternalData(token,userId);
 
         // ================= SAVE POST =================
         Post post = Post.builder()
@@ -132,6 +132,8 @@ public class PostServiceImpl implements PostService {
         );
 
         feedAsyncService.createFeed(data,token);
+
+        profileClient.updatePostCounter(token,new ReelUpdate(userId,+1));
 
         return postRepository.save(post);
     }
@@ -167,6 +169,8 @@ public class PostServiceImpl implements PostService {
                 throw new RuntimeException(e);
             }
         });
+
+        profileClient.updatePostCounter(token,new ReelUpdate(userId,-1));
 
         postRepository.deleteById(postId);
     }
