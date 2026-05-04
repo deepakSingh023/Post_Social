@@ -138,6 +138,39 @@ public class PostServiceImpl implements PostService {
         return postRepository.save(post);
     }
 
+    @Override
+    public Post newCreateApi(String userId, CreatePost data){
+
+        InternalProfile profile = profileClient.getInternalData(token,userId);
+
+        Post post = Post.builder()
+                .userId(userId)
+                .caption(data.caption())
+                .imageUrls(data.images())
+                .videoUrl(data.video())
+                .username(profile.username())
+                .avatar(profile.avatar())
+                .songUrl(data.songUrl())
+                .songName(data.songName())
+                .artistName(data.artistName())
+                .tags(data.tags())
+                .isPrivate(data.isPrivate())
+                .createdAt(Instant.now())
+                .build();
+
+        CreateFeed data2 = new CreateFeed(
+                userId,
+                post.getId()
+        );
+
+        feedAsyncService.createFeed(data2,token);
+
+        profileClient.updatePostCounter(token,new ReelUpdate(userId,+1));
+
+        return postRepository.save(post);
+
+    }
+
 
     @Override
     public void deletePost(String userId, String postId) {

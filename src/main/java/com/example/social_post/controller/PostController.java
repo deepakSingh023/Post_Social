@@ -1,12 +1,12 @@
 package com.example.social_post.controller;
 
-import com.example.social_post.dto.IndividualResponse;
-import com.example.social_post.dto.PersonalPosts;
-import com.example.social_post.dto.PostCreation;
-import com.example.social_post.dto.PostLiked;
+import com.example.social_post.dto.*;
 import com.example.social_post.entity.Post;
 import com.example.social_post.service.PostService;
+import com.example.social_post.service.PresignedUrlService;
+import com.example.social_post.service.S3Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +21,11 @@ public class PostController {
 
     private final PostService postService;
 
+    private final PresignedUrlService presignedUrlService;
+
+    @Value("${cloudflare.r2.posts-public-url}")
+    private String publicBaseUrl;
+
     // ---------------- CREATE POST ----------------
 
     @PostMapping(value = "/create", consumes = {"multipart/form-data"})
@@ -33,6 +38,25 @@ public class PostController {
         Post post = postService.createPost(userId, postCreation);
 
         return ResponseEntity.ok(post);
+    }
+
+
+
+    //create post with the new api of upload first then save
+
+
+    @PostMapping("/frontend-upload/create")
+    public ResponseEntity<Post> createPostNew(
+            Authentication authentication,
+            @RequestBody CreatePost createPost
+    ){
+
+        String userId = authentication.getName();
+
+        Post post = postService.newCreateApi(userId,createPost);
+
+        return  ResponseEntity.ok(post);
+
     }
 
     // ---------------- DELETE POST ----------------
@@ -72,5 +96,30 @@ public class PostController {
         IndividualResponse res = postService.getIndividualPost(postId, userId);
         return ResponseEntity.ok(res);
     }
+
+
+    @PostMapping("/upload-url")
+    public UploadResponse getUploadUrl(@RequestBody UploadRequest req,
+                                       Authentication authentication) {
+
+        String userId = authentication.getName();
+
+        // 🔒 Validate
+        if (req.contentType() == null || !req.contentType().startsWith("image/")) {
+            throw new IllegalArgumentException("Only image uploads allowed");
+        }
+
+        // 🔒 Sanitize filename
+        String safeFileName = req.fileName().replaceAll("[^a-zA-Z0-9.-]", "_");
+
+        String key = userId + "/" + System.currentTimeMillis() + "-" + safeFileName;
+
+        String uploadUrl = presignedUrlService.generatePresignedUrl(key, req.contentType());
+
+        String fileUrl = publicBaseUrl + "/" + key;
+
+        return new UploadResponse(uploadUrl, fileUrl);
+    }
+
 
 }

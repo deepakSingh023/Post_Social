@@ -17,5 +17,7 @@ public interface PostService {
 
     IndividualResponse getIndividualPost(String postId, String userId);
 
+    Post newCreateApi(String userId, CreatePost data);
+
 }
 
