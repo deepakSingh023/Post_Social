@@ -104,9 +104,9 @@ public class PostController {
 
         String userId = authentication.getName();
 
-        // 🔒 Validate
-        if (req.contentType() == null || !req.contentType().startsWith("image/")) {
-            throw new IllegalArgumentException("Only image uploads allowed");
+        if (req.contentType() == null ||
+                (!req.contentType().startsWith("image/") && !req.contentType().startsWith("video/"))) {
+            throw new IllegalArgumentException("Only image or video uploads allowed");
         }
 
         // 🔒 Sanitize filename
