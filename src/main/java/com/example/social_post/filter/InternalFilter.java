@@ -23,7 +23,7 @@ public class InternalFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
 
         return !(uri.startsWith("/api/denormalize/")
-                || uri.startsWith("/api/post/like/inc"));
+                || uri.startsWith("/api/post/"));
     }
 
     @Override
