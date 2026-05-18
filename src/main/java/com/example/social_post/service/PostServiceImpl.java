@@ -35,11 +35,15 @@ public class PostServiceImpl implements PostService {
 
     private final PostClient postClient;
 
+    private final  DeleteFeedService deleteFeedService;
+
      private final LikeClient likeClient;
 
     @Value("${service.secret}")
     private String token;
 
+
+    //old creat api with app the things in the backend while new one implement a faster api
     @Override
     public Post createPost(String userId, PostCreation dto) throws Exception {
 
@@ -206,6 +210,8 @@ public class PostServiceImpl implements PostService {
         profileClient.updatePostCounter(token,new ReelUpdate(userId,-1));
 
         postRepository.deleteById(postId);
+
+        deleteFeedService.deleteFeed(postId);
     }
 
     @Override
