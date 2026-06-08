@@ -19,7 +19,7 @@ public class PostClientController {
     private final PostService postService;
 
 
-    @GetMapping("/getPosts-feed")
+    @PostMapping("/getPosts-feed")
     public ResponseEntity<List<Post>> getFeedPosts(
             @RequestBody List<String> postIds
     ){
@@ -29,7 +29,7 @@ public class PostClientController {
 
     }
 
-    @GetMapping("/getPost")
+    @PostMapping("/getPost")
     public ResponseEntity<RecipientsPosts> getPosts(
             @RequestParam String authorId,
             @RequestParam int size,
