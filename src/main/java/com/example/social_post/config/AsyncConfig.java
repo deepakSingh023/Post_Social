@@ -45,4 +45,21 @@ public class AsyncConfig {
         return thread;
 
     }
+
+    @Bean("feedDelete")
+    public Executor deleteTheFeed(){
+
+        ThreadPoolTaskExecutor thread = new ThreadPoolTaskExecutor();
+
+        thread.setCorePoolSize(10);
+        thread.setMaxPoolSize(20);
+        thread.setQueueCapacity(100);
+        thread.setThreadNamePrefix("-deleteFeed");
+        thread.setRejectedExecutionHandler(
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        thread.initialize();
+        return thread;
+
+    }
 }
