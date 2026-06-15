@@ -33,8 +33,6 @@ public class PostServiceImpl implements PostService {
 
     private final ProfileClient profileClient;
 
-    private final PostClient postClient;
-
     private final  DeleteFeedService deleteFeedService;
 
      private final LikeClient likeClient;
