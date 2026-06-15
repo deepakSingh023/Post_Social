@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/post/**").permitAll()
                         .requestMatchers("/api/denormalize/**").permitAll()
                         .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(internalFilter, UsernamePasswordAuthenticationFilter.class)
