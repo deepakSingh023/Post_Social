@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,8 @@ public class PostServiceImpl implements PostService {
     private final  DeleteFeedService deleteFeedService;
 
      private final LikeClient likeClient;
+
+     private final static Logger log = LoggerFactory.getLogger(PostServiceImpl.class);
 
     @Value("${service.secret}")
     private String token;
@@ -246,13 +250,20 @@ public class PostServiceImpl implements PostService {
                 .toList();
 
         //  call like service (bulk)
-        Map<String, Boolean> likedMap;
+        Map<String, Boolean> likedMap= Collections.emptyMap();
 
-        if (viewerUserId != null && !postIds.isEmpty()) {
-            likedMap = likeClient.getLikedStatus(token,viewerUserId, postIds);
-        } else {
-            likedMap = Collections.emptyMap();
+        try{
+            if (viewerUserId != null && !postIds.isEmpty()) {
+                likedMap = likeClient.getLikedStatus(token,viewerUserId, postIds);
+            } else {
+                likedMap = Collections.emptyMap();
+            }
+        }catch (Exception e){
+            log.error("the likes service is down or not responding",e);
         }
+
+        Map<String, Boolean> likeData = likedMap;
+
 
         //  map to DTO
         List<PostResponseDto> postDtos = posts.stream()
@@ -272,7 +283,7 @@ public class PostServiceImpl implements PostService {
                         post.getCreatedAt(),
                         post.getLikes(),
                         post.getComments(),
-                        likedMap.getOrDefault(post.getId(), false)
+                        likeData.getOrDefault(post.getId(), false)
                 ))
                 .toList();
 
@@ -281,7 +292,6 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<Post> getPosts(List<String> postIds){
-
         return postRepository.findAllById(postIds);
     }
 
@@ -332,7 +342,14 @@ public class PostServiceImpl implements PostService {
 
         boolean isOwner = post.getUserId().equals(userId);
 
-        boolean isLiked = likeClient.getIndividualLiked(token, userId, postId);
+        boolean isLiked = false;
+
+        try{
+            isLiked = likeClient.getIndividualLiked(token, userId, postId);
+
+        }catch (Exception e){
+            log.error("likes service is down or not responding",e);
+        }
 
         PostResponseDto res = new PostResponseDto(
                 post.getId(),
