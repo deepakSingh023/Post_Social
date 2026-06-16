@@ -21,7 +21,7 @@ The service stores post content and acts as the source of truth for post-related
 
 ## Technology Stack
 
-* Java 21
+* Java 17
 * Spring Boot
 * Spring Data MongoDB
 * MongoDB
